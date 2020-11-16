@@ -136,8 +136,7 @@ def escreve_dw(df):
     engine = sqlalchemy.create_engine(
         "mssql+pyodbc://SA:Ney198789@127.0.0.1/enade?driver=ODBC+Driver+17+for+SQL+Server"
     )
-    df.to_sql("tratado", con=engine, index=False, if_exists='append', 
-            method='multi', chunksize=100)
+    df.to_sql("tratado", con=engine, index=False, if_exists='append', chunksize=1000)
 
 
 with Flow('Enade', schedule) as flow:
