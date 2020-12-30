@@ -23,6 +23,25 @@ dag = DAG(
     schedule_interval=timedelta(minutes=2)
 )
 
+get_data = BashOperator(
+    task_id="get-data",
+    bash_command='curl http://download.inep.gov.br/microdados/Enade_Microdados/microdados_enade_2019.zip -o /usr/local/airflow/data/microdados_enade_2019.zip',
+    trigger_rule="all_done",
+    dag=dag
+)
+
+
+def unzip_file():
+    with zipfile.ZipFile("/usr/local/airflow/data/microdados_enade_2019.zip", 'r') as zipped:
+        zipped.extractall("/usr/local/airflow/data")
+
+unzip_data = PythonOperator(
+    task_id='unzip-data',
+    python_callable=unzip_file,
+    dag=dag
+)
+
+
 def select_student():
     df = pd.read_csv('/usr/local/airflow/data/microdados_enade_2019/2019/3.DADOS/microdados_enade_2019.txt', sep=';', decimal=',')
     escolha = random.randint(0, df.shape[0]-1)
@@ -62,4 +81,4 @@ female_branch = BashOperator(
     dag=dag
 )
 
-pick_student >> male_of_female >> [male_branch, female_branch]
+get_data >> unzip_data >> pick_student >> male_of_female >> [male_branch, female_branch]

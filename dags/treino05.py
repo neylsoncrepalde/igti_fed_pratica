@@ -25,11 +25,23 @@ dag = DAG(
     schedule_interval="*/10 * * * *"
 )
 
-start_preprocessing = BashOperator(
-    task_id='start_preprocessing',
-    bash_command='echo "Start preprocessing! Go!"',
+get_data = BashOperator(
+    task_id="get-data",
+    bash_command='curl http://download.inep.gov.br/microdados/Enade_Microdados/microdados_enade_2019.zip -o /usr/local/airflow/data/microdados_enade_2019.zip',
+    trigger_rule="all_done",
     dag=dag
 )
+
+def unzip_file():
+    with zipfile.ZipFile("/usr/local/airflow/data/microdados_enade_2019.zip", 'r') as zipped:
+        zipped.extractall("/usr/local/airflow/data")
+
+unzip_data = PythonOperator(
+    task_id='unzip-data',
+    python_callable=unzip_file,
+    dag=dag
+)
+
 
 def aplica_filtros():
     cols = ['CO_GRUPO', 'TP_SEXO', 'NU_IDADE', 'NT_GER', 'NT_FG', 'NT_CE',
@@ -184,7 +196,7 @@ task_join = PythonOperator(
 
 
 
-start_preprocessing >> task_aplica_filtro >> [task_idade_cent, task_est_civil, task_cor ,task_escopai, task_escomae, task_renda]
+get_data >> unzip_data >> task_aplica_filtro >> [task_idade_cent, task_est_civil, task_cor ,task_escopai, task_escomae, task_renda]
 task_idade_quad.set_upstream(task_idade_cent)
 task_join.set_upstream([task_idade_cent, task_est_civil, task_escopai, task_cor, task_escomae, task_renda, task_idade_quad])
 
